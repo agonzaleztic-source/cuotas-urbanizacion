@@ -257,7 +257,7 @@ details.add form { display: grid; grid-template-columns: repeat(auto-fit, minmax
     if (S.token) headers.Authorization = "Bearer " + S.token;
     if (opts.body) headers["Content-Type"] = "application/json";
     const r = await fetch(API + path + (opts.method ? "" : `?ref=${BRANCH}&t=${Date.now()}`), { method: opts.method || "GET", headers, body: opts.body ? JSON.stringify(opts.body) : undefined, cache: "no-store" });
-    if (!r.ok) { const e = new Error("GitHub " + r.status); e.status = r.status; throw e; }
+    if (!r.ok) { let m = ""; try { m = (await r.json()).message || ""; } catch (_) {} const e = new Error(`GitHub ${r.status}${m ? ": " + m : ""}`); e.status = r.status; throw e; }
     return opts.raw ? r.text() : r.json();
   }
   const putFile = (path, text, sha, message) => gh(path, { method: "PUT", body: { message, content: b64(enc.encode(text)), branch: BRANCH, ...(sha ? { sha } : {}) } });
@@ -575,7 +575,7 @@ details.add form { display: grid; grid-template-columns: repeat(auto-fit, minmax
         cfg = await encrypt(key, enc.encode(tok));
         S.key = key;
         try { await putFile("config.enc", cfg, null, "Configuración inicial"); }
-        catch (e) { S.token = null; throw new Error("El token no tiene permiso de escritura (Contents: Read and write)."); }
+        catch (e) { S.token = null; throw new Error(`GitHub no deja guardar con este token (${e.message}). Revisa que el token tenga el repositorio cuotas-urbanizacion seleccionado y Contents en «Read and write».`); }
       } else {
         S.token = dec.decode(await decrypt(key, cfg));
       }
