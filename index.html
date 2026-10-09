@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Cuotas de la Urbanización</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: libro de cobros — resumen arriba, una ficha por parcela con su mojón numerado, abonados, notas y documentos */
+:root {
+  --bg: #eef1ed; --surface: #ffffff; --ink: #1d2a24; --muted: #5d6b64; --line: #d3dbd5;
+  --accent: #2f5d4a; --accent-ink: #ffffff; --marker: #e4ddc9; --marker-ink: #3b3526;
+  --ok: #1f7a4d; --ok-bg: #dcefe3; --warn: #9a6400; --warn-bg: #f6ead0; --bad: #b2402f; --bad-bg: #f6dfda;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131a17; --surface: #1b2420; --ink: #e3ebe6; --muted: #98a8a0; --line: #2e3a35;
+    --accent: #7cc3a2; --accent-ink: #10201a; --marker: #3a3628; --marker-ink: #efe6cc;
+    --ok: #6fd39d; --ok-bg: #1d3a2b; --warn: #e8b85c; --warn-bg: #3b2f17; --bad: #f08d7c; --bad-bg: #3d221d;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+[hidden] { display: none !important; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 64px; display: grid; gap: 20px; }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.head p { margin: 4px 0 0; color: var(--muted); }
+.lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: block; margin-bottom: 4px; }
+select, input[type=text], input[type=number], input[type=search], input[type=password], textarea {
+  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; width: 100%;
+}
+textarea { min-height: 72px; resize: vertical; }
+button, .btn { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 12px; text-decoration: none; display: inline-block; }
+button:hover, .btn:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Acceso */
+.gate { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.gate form { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: grid; gap: 14px; }
+.gate h1 { font-size: 1.6rem; }
+.gate p { margin: 0; color: var(--muted); }
+.check { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 0.9rem; }
+.err { color: var(--bad); font-weight: 700; margin: 0; }
+.setup { border-top: 1px dashed var(--line); padding-top: 14px; display: grid; gap: 10px; }
+.setup ol { margin: 0; padding-left: 18px; color: var(--muted); font-size: 0.9rem; display: grid; gap: 4px; }
+
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 2px; }
+.stat b { font-family: var(--f-display); font-size: 1.7rem; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat span { color: var(--muted); font-size: 0.85rem; }
+.stat.ok b { color: var(--ok); } .stat.bad b { color: var(--bad); }
+.bar { height: 8px; border-radius: 99px; background: var(--bad-bg); overflow: hidden; grid-column: 1 / -1; }
+.bar i { display: block; height: 100%; background: var(--ok); transition: width .3s; }
+
+.tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.tools .grow { flex: 1 1 200px; display: grid; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; }
+.seg button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); }
+
+.notice { border-radius: 10px; padding: 12px 14px; background: var(--warn-bg); color: var(--ink); }
+.notice[data-kind=error] { background: var(--bad-bg); }
+.sync { font-size: 0.85rem; color: var(--muted); }
+
+.parcels { display: grid; gap: 14px; }
+.parcel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: grid; grid-template-columns: auto 1fr; min-width: 0; }
+.marker { background: var(--marker); color: var(--marker-ink); border-radius: 11px 0 0 11px; padding: 14px 12px; min-width: 88px; display: grid; align-content: start; justify-items: center; gap: 6px; text-align: center; }
+.marker small { font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; }
+.marker strong { font-family: var(--f-display); font-weight: 800; font-size: 1.9rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.pbody { min-width: 0; padding: 10px 14px 12px; display: grid; gap: 6px; }
+.ptop { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; }
+.ptop h2 { font-family: var(--f-display); font-weight: 600; font-size: 1.05rem; margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.chip { font-size: 0.75rem; font-weight: 700; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+.chip.ok { background: var(--ok-bg); color: var(--ok); } .chip.part { background: var(--warn-bg); color: var(--warn); } .chip.bad { background: var(--bad-bg); color: var(--bad); }
+.pactions { display: flex; gap: 6px; flex-wrap: wrap; }
+.pactions button { padding: 5px 10px; font-size: 0.85rem; }
+
+ul.subs { list-style: none; margin: 0; padding: 0; display: grid; }
+ul.subs li { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.who { min-width: 0; display: grid; gap: 1px; }
+.who .nm { overflow-wrap: anywhere; }
+.who .nm.none { color: var(--muted); font-style: italic; }
+.tel { font-family: var(--f-mono); font-size: 0.92rem; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.linkbtn { border: 0; background: none; padding: 0 2px; color: var(--accent); font-size: 0.8rem; text-decoration: underline; text-underline-offset: 2px; }
+.row-actions { display: flex; align-items: center; gap: 8px; }
+
+.toggle { display: inline-flex; align-items: center; gap: 8px; border-radius: 99px; padding: 6px 12px 6px 6px; font-weight: 700; font-size: 0.85rem; border: 1px solid transparent; min-width: 122px; }
+.toggle .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 0.8rem; }
+.toggle[aria-pressed=true] { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.toggle[aria-pressed=true] .dot { background: var(--ok); color: var(--surface); }
+.toggle[aria-pressed=false] { background: var(--bad-bg); color: var(--bad); }
+.toggle[aria-pressed=false] .dot { background: var(--surface); border: 2px solid var(--bad); }
+
+form.edit { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; align-items: end; padding: 8px 0; border-top: 1px solid var(--line); }
+form.edit .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+form.edit div, details.add form div { display: grid; }
+
+details.extra { border-top: 1px solid var(--line); padding-top: 8px; }
+details.extra summary { cursor: pointer; color: var(--accent); font-weight: 700; font-size: 0.9rem; }
+.extra-body { display: grid; gap: 10px; padding-top: 10px; }
+.docs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.docs li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+.docs .dn { min-width: 0; overflow-wrap: anywhere; }
+.docs .dm { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.docs .da { display: flex; gap: 6px; flex-wrap: wrap; }
+.docs .da button, .docs .da a { padding: 4px 9px; font-size: 0.85rem; }
+.upl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.upl input[type=file] { font: inherit; font-size: 0.9rem; max-width: 100%; color: var(--muted); }
+
+details.add { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; }
+details.add > summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+details.add form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: end; margin-top: 12px; }
+.general { display: grid; gap: 10px; margin-top: 12px; }
+
+.empty { text-align: center; color: var(--muted); padding: 32px 16px; background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 99px; font-size: 0.9rem; z-index: 10; max-width: calc(100% - 32px); text-align: center; }
+@media (max-width: 520px) {
+  .parcel { grid-template-columns: 1fr; }
+  .marker { border-radius: 11px 11px 0 0; grid-auto-flow: column; justify-content: start; align-items: center; min-width: 0; padding: 8px 14px; }
+  ul.subs li { grid-template-columns: 1fr; }
+  .row-actions { justify-content: space-between; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <form id="loginForm" autocomplete="on">
+    <h1>Cuotas de la urbanización</h1>
+    <p>Escribe la contraseña para entrar.</p>
+    <div><label class="lbl" for="pw">Contraseña</label><input id="pw" type="password" autocomplete="current-password" required></div>
+    <label class="check"><input id="remember" type="checkbox" checked> Recordar en este dispositivo</label>
+    <div id="setupBox" class="setup" hidden>
+      <strong>Configuración inicial (solo una vez)</strong>
+      <ol>
+        <li>Crea un token de GitHub de tipo «fine-grained» con acceso solo a este repositorio y permiso «Contents: Read and write».</li>
+        <li>Pégalo aquí. Se guarda cifrado con la contraseña y no hay que volver a ponerlo.</li>
+      </ol>
+      <div><label class="lbl" for="tok">Token de GitHub</label><input id="tok" type="password" autocomplete="off" placeholder="github_pat_…"></div>
+    </div>
+    <p id="loginErr" class="err" hidden></p>
+    <button id="loginBtn" class="primary" type="submit">Entrar</button>
+  </form>
+</div>
+
+<div id="app" class="wrap" hidden>
+  <header class="head">
+    <div>
+      <h1>Cuotas de la urbanización</h1>
+      <p>Marca quién ha pagado en cada parcela. Los cambios se guardan solos. <span id="sync" class="sync"></span></p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+      <div><label class="lbl" for="year">Periodo</label><select id="year" style="width:auto"></select></div>
+      <div><label class="lbl" for="cuota">Cuota por abonado (€)</label><input id="cuota" type="number" min="0" step="0.01" inputmode="decimal" style="width:120px" placeholder="0,00"></div>
+      <div><button id="reload" type="button">Actualizar</button></div>
+      <div><button id="logout" type="button">Salir</button></div>
+    </div>
+  </header>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <section class="summary" aria-label="Resumen del periodo">
+    <div class="stat ok"><b id="sPaid">–</b><span>abonados pagados</span></div>
+    <div class="stat bad"><b id="sPend">–</b><span>abonados pendientes</span></div>
+    <div class="stat"><b id="sParc">–</b><span>parcelas al corriente</span></div>
+    <div class="stat"><b id="sMoney">–</b><span id="sMoneyLbl">recaudado / pendiente</span></div>
+    <div class="bar" aria-hidden="true"><i id="sBar" style="width:0"></i></div>
+  </section>
+
+  <div class="tools">
+    <div class="grow"><label class="lbl" for="q">Buscar</label><input id="q" type="search" placeholder="Parcela, nombre o teléfono"></div>
+    <div>
+      <span class="lbl">Mostrar</span>
+      <div class="seg" role="group" aria-label="Filtro">
+        <button type="button" data-filter="all" aria-pressed="true">Todos</button>
+        <button type="button" data-filter="pend" aria-pressed="false">Pendientes</button>
+        <button type="button" data-filter="paid" aria-pressed="false">Pagados</button>
+      </div>
+    </div>
+  </div>
+
+  <main id="parcels" class="parcels"><div class="empty">Cargando las parcelas…</div></main>
+
+  <details class="add" id="generalBox">
+    <summary>Documentos generales de la urbanización</summary>
+    <div class="general" id="generalBody"></div>
+  </details>
+
+  <details class="add">
+    <summary>Añadir abonado</summary>
+    <form id="addForm" autocomplete="off">
+      <div><label class="lbl" for="addParcela">Parcela</label><input id="addParcela" type="text" required placeholder="Ej. 95 o 112A"></div>
+      <div><label class="lbl" for="addNombre">Nombre</label><input id="addNombre" type="text" placeholder="Opcional"></div>
+      <div><label class="lbl" for="addTel">Teléfono</label><input id="addTel" type="text" inputmode="tel" required placeholder="600 000 000"></div>
+      <div><button class="primary" type="submit">Guardar abonado</button></div>
+    </form>
+  </details>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(() => {
+  // Repositorio donde viven los datos cifrados
+  const OWNER = "agonzaleztic-source", REPO = "cuotas-urbanizacion", BRANCH = "main";
+  const API = `https://api.github.com/repos/${OWNER}/${REPO}/contents/`;
+  const MAX_FILE = 15 * 1024 * 1024;
+  const $ = (s) => document.querySelector(s);
+  const enc = new TextEncoder(), dec = new TextDecoder();
+
+  // ---------- utilidades ----------
+  const b64 = (bytes) => { let s = ""; const CH = 0x8000; for (let i = 0; i < bytes.length; i += CH) s += String.fromCharCode.apply(null, bytes.subarray(i, i + CH)); return btoa(s); };
+  const unb64 = (str) => { const s = atob(str.replace(/\s/g, "")); const out = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i); return out; };
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmtTel = (t) => { const d = String(t).replace(/\D/g, ""); return d.length === 9 ? d.replace(/(\d{3})(\d{2})(\d{2})(\d{2})/, "$1 $2 $3 $4") : t; };
+  const eur = (n) => n.toLocaleString("es-ES", { style: "currency", currency: "EUR" });
+  const fmtSize = (n) => n > 1048576 ? (n / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+  const fmtDate = (iso) => new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
+  const natKey = (p) => { const m = String(p).match(/^(\d+)(.*)$/); return m ? [parseInt(m[1], 10), m[2]] : [Infinity, String(p)]; };
+  const cmpParcel = (a, b) => { const [na, sa] = natKey(a), [nb, sb] = natKey(b); return na - nb || sa.localeCompare(sb, "es"); };
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+
+  // ---------- cifrado (AES-GCM con clave PBKDF2) ----------
+  async function deriveKey(pw, meta) {
+    const base = await crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({ name: "PBKDF2", salt: unb64(meta.salt), iterations: meta.iterations, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+  }
+  async function encrypt(key, bytes) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, bytes));
+    return JSON.stringify({ iv: b64(iv), ct: b64(ct) });
+  }
+  async function decrypt(key, text) {
+    const o = JSON.parse(text);
+    return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(o.iv) }, key, unb64(o.ct)));
+  }
+
+  // ---------- GitHub ----------
+  const S = { key: null, token: null, meta: null, data: null, sha: null, year: lsGet("cuotas.year") || String(new Date().getFullYear()), filter: "all", q: "", editing: null, confirmDel: null, open: new Set() };
+
+  async function gh(path, opts = {}) {
+    const headers = { Accept: opts.raw ? "application/vnd.github.raw" : "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+    if (S.token) headers.Authorization = "Bearer " + S.token;
+    if (opts.body) headers["Content-Type"] = "application/json";
+    const r = await fetch(API + path + (opts.method ? "" : `?ref=${BRANCH}&t=${Date.now()}`), { method: opts.method || "GET", headers, body: opts.body ? JSON.stringify(opts.body) : undefined, cache: "no-store" });
+    if (!r.ok) { const e = new Error("GitHub " + r.status); e.status = r.status; throw e; }
+    return opts.raw ? r.text() : r.json();
+  }
+  const putFile = (path, text, sha, message) => gh(path, { method: "PUT", body: { message, content: b64(enc.encode(text)), branch: BRANCH, ...(sha ? { sha } : {}) } });
+  const delFile = (path, sha, message) => gh(path, { method: "DELETE", body: { message, sha, branch: BRANCH } });
+
+  async function loadData() {
+    const f = await gh("data.enc");
+    S.sha = f.sha;
+    const text = f.content ? dec.decode(unb64(f.content)) : await gh("data.enc", { raw: true });
+    S.data = JSON.parse(dec.decode(await decrypt(S.key, text)));
+    S.data.abonados ||= []; S.data.parcelas ||= {}; S.data.docs ||= [];
+  }
+
+  // Cada cambio se aplica sobre la última versión; si otro guardó antes, se recarga y se repite.
+  let queue = Promise.resolve();
+  function mutate(fn, okMsg) {
+    fn(S.data); render();
+    const job = queue.then(async () => {
+      setSync("Guardando…");
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const text = await encrypt(S.key, enc.encode(JSON.stringify(S.data)));
+          const r = await putFile("data.enc", text, S.sha, "Actualizar datos");
+          S.sha = r.content.sha;
+          setSync("Guardado"); if (okMsg) toast(okMsg);
+          return true;
+        } catch (e) {
+          if ((e.status === 409 || e.status === 422) && attempt < 2) { await loadData(); fn(S.data); render(); continue; }
+          handleErr(e); return false;
+        }
+      }
+    });
+    queue = job.catch(() => {});
+    return job;
+  }
+
+  function handleErr(e) {
+    setSync("");
+    if (e && e.status === 401) notice("El token de GitHub ha caducado o no es válido. Hay que crear uno nuevo y volver a configurarlo.", "error");
+    else if (e && e.status === 403) notice("GitHub ha rechazado el cambio. Revisa que el token tenga permiso «Contents: Read and write» sobre este repositorio.", "error");
+    else notice("No se pudo guardar. Revisa la conexión y pulsa «Actualizar» para ver los datos actuales.", "error");
+  }
+
+  // ---------- interfaz ----------
+  let toastT;
+  function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2400); }
+  function notice(msg, kind) { const n = $("#notice"); if (!msg) { n.hidden = true; return; } n.textContent = msg; n.dataset.kind = kind || ""; n.hidden = false; }
+  function setSync(t) { $("#sync").textContent = t ? "· " + t : ""; }
+  const isPaid = (s) => !!(s.pagos && s.pagos[S.year]);
+
+  function fillYears() {
+    const now = new Date().getFullYear();
+    const years = new Set([String(now - 1), String(now), String(now + 1), S.year]);
+    S.data.abonados.forEach((s) => Object.keys(s.pagos || {}).forEach((y) => years.add(y)));
+    $("#year").innerHTML = [...years].sort().map((y) => `<option value="${esc(y)}"${y === S.year ? " selected" : ""}>${esc(y)}</option>`).join("");
+  }
+
+  function docsHtml(parcela) {
+    const list = S.data.docs.filter((d) => (d.parcela || "") === parcela).sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const key = parcela || "_general";
+    return `${list.length ? `<ul class="docs">${list.map((d) => `<li>
+        <div><div class="dn">${esc(d.nombre)}</div><div class="dm">${esc(fmtDate(d.fecha))} · ${esc(fmtSize(d.tam))}</div></div>
+        <div class="da"><button type="button" data-act="doc-open" data-id="${esc(d.id)}">Ver</button>
+        ${S.confirmDel === "doc:" + d.id ? `<button type="button" data-act="doc-del-yes" data-id="${esc(d.id)}" style="color:var(--bad);border-color:var(--bad)">Sí, borrar</button><button type="button" data-act="cancel">No</button>` : `<button type="button" data-act="doc-del" data-id="${esc(d.id)}">Borrar</button>`}</div>
+      </li>`).join("")}</ul>` : `<p class="dm" style="margin:0;color:var(--muted)">Sin documentos todavía.</p>`}
+      <div class="upl"><input type="file" id="file-${esc(key)}" data-parcela="${esc(parcela)}" multiple accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"><span class="dm" style="color:var(--muted);font-size:.8rem">Fotos, PDF o documentos de hasta 15 MB</span></div>`;
+  }
+
+  function render() {
+    if (!S.data) return;
+    fillYears();
+    if (document.activeElement !== $("#cuota")) $("#cuota").value = S.data.cuota ? String(S.data.cuota) : "";
+    const cuota = Number(S.data.cuota) || 0;
+    const all = S.data.abonados;
+    const paid = all.filter(isPaid).length, pend = all.length - paid;
+    const groups = new Map();
+    all.forEach((s) => { if (!groups.has(s.parcela)) groups.set(s.parcela, []); groups.get(s.parcela).push(s); });
+    let parcOk = 0; groups.forEach((l) => { if (l.every(isPaid)) parcOk++; });
+
+    $("#sPaid").textContent = paid; $("#sPend").textContent = pend; $("#sParc").textContent = `${parcOk}/${groups.size}`;
+    if (cuota > 0) { $("#sMoney").textContent = eur(paid * cuota); $("#sMoneyLbl").textContent = `recaudado · faltan ${eur(pend * cuota)}`; }
+    else { $("#sMoney").textContent = "–"; $("#sMoneyLbl").textContent = "indica la cuota para ver importes"; }
+    $("#sBar").style.width = all.length ? `${(paid / all.length) * 100}%` : "0";
+
+    const q = S.q.trim().toLowerCase(), qd = q.replace(/\s/g, "");
+    const html = [];
+    [...groups.keys()].sort(cmpParcel).forEach((p) => {
+      const list = groups.get(p).slice().sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+      const nPaid = list.filter(isPaid).length;
+      const exact = q && String(p).toLowerCase() === q;
+      const rows = list.filter((s) => {
+        if (S.filter === "paid" && !isPaid(s)) return false;
+        if (S.filter === "pend" && isPaid(s)) return false;
+        if (!q || exact) return true;
+        return (s.nombre || "").toLowerCase().includes(q) || (qd && String(s.telefono).includes(qd)) || String(p).toLowerCase().includes(q);
+      });
+      if (!rows.length) return;
+      const names = [...new Set(list.map((s) => s.nombre).filter(Boolean))];
+      const chip = nPaid === list.length ? `<span class="chip ok">Al corriente</span>` : nPaid === 0 ? `<span class="chip bad">Pendiente</span>` : `<span class="chip part">${nPaid} de ${list.length} pagados</span>`;
+      const allPaid = nPaid === list.length;
+      const nDocs = S.data.docs.filter((d) => d.parcela === p).length;
+      const nota = (S.data.parcelas[p] && S.data.parcelas[p].notas) || "";
+      html.push(`<article class="parcel">
+        <div class="marker"><small>Parcela</small><strong>${esc(p)}</strong></div>
+        <div class="pbody">
+          <div class="ptop"><h2>${esc(names.length ? names.join(", ") : "Sin nombre")}</h2>${chip}</div>
+          <div class="pactions"><button type="button" data-act="all" data-p="${esc(p)}" data-v="${allPaid ? "0" : "1"}">${allPaid ? "Marcar parcela como pendiente" : "Marcar toda la parcela pagada"}</button></div>
+          <ul class="subs">${rows.map(rowHtml).join("")}</ul>
+          <details class="extra" data-p="${esc(p)}"${S.open.has(p) ? " open" : ""}>
+            <summary>Notas y documentos${nDocs ? ` (${nDocs})` : ""}${nota ? " · con nota" : ""}</summary>
+            <div class="extra-body">
+              <div><label class="lbl" for="nota-${esc(p)}">Notas de la parcela</label><textarea id="nota-${esc(p)}" data-nota="${esc(p)}" placeholder="Ej. pagó en efectivo a Juan Carlos el 3 de octubre">${esc(nota)}</textarea></div>
+              <div><button type="button" data-act="nota" data-p="${esc(p)}">Guardar nota</button></div>
+              ${docsHtml(p)}
+            </div>
+          </details>
+        </div></article>`);
+    });
+    $("#parcels").innerHTML = html.length ? html.join("") : all.length ? `<div class="empty">Ningún abonado coincide con el filtro.</div>` : `<div class="empty">Aún no hay abonados. Usa «Añadir abonado» para crear el primero.</div>`;
+    $("#generalBody").innerHTML = docsHtml("");
+    const nG = S.data.docs.filter((d) => !d.parcela).length;
+    $("#generalBox > summary").textContent = `Documentos generales de la urbanización${nG ? ` (${nG})` : ""}`;
+  }
+
+  function rowHtml(s) {
+    const id = esc(s.id);
+    if (S.editing === s.id) {
+      return `<li style="display:block"><form class="edit" data-id="${id}">
+        <div><label class="lbl" for="eP-${id}">Parcela</label><input id="eP-${id}" name="parcela" type="text" value="${esc(s.parcela)}" required></div>
+        <div><label class="lbl" for="eN-${id}">Nombre</label><input id="eN-${id}" name="nombre" type="text" value="${esc(s.nombre)}"></div>
+        <div><label class="lbl" for="eT-${id}">Teléfono</label><input id="eT-${id}" name="telefono" type="text" value="${esc(s.telefono)}" required></div>
+        <div class="btns"><button class="primary" type="submit">Guardar</button><button type="button" data-act="cancel">Cancelar</button>
+        ${S.confirmDel === s.id ? `<button type="button" data-act="del-yes" data-id="${id}" style="color:var(--bad);border-color:var(--bad)">Sí, borrar</button>` : `<button type="button" data-act="del" data-id="${id}">Borrar</button>`}</div>
+      </form></li>`;
+    }
+    const p = isPaid(s);
+    return `<li>
+      <div class="who"><span class="nm${s.nombre ? "" : " none"}">${s.nombre ? esc(s.nombre) : "Sin nombre"}</span>
+        <span class="tel">${esc(fmtTel(s.telefono))}<button type="button" class="linkbtn" data-act="copy" data-tel="${esc(s.telefono)}">copiar</button><button type="button" class="linkbtn" data-act="edit" data-id="${id}">editar</button></span></div>
+      <div class="row-actions"><button type="button" class="toggle" data-act="toggle" data-id="${id}" aria-pressed="${p}"><span class="dot" aria-hidden="true">${p ? "✓" : ""}</span>${p ? "Pagado" : "No pagado"}</button></div>
+    </li>`;
+  }
+
+  // ---------- documentos ----------
+  async function shrinkImage(file) {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 1.5 * 1048576) return file;
+    try {
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 2200 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas"); c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      const blob = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.85));
+      return blob && blob.size < file.size ? new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" }) : file;
+    } catch (e) { return file; }
+  }
+
+  async function uploadFiles(input) {
+    const parcela = input.dataset.parcela || "";
+    const files = [...input.files]; input.value = "";
+    for (const f0 of files) {
+      const f = await shrinkImage(f0);
+      if (f.size > MAX_FILE) { notice(`«${f0.name}» ocupa ${fmtSize(f.size)}. El máximo es 15 MB.`, "error"); continue; }
+      const id = uid();
+      setSync(`Subiendo ${f.name}…`);
+      try {
+        const text = await encrypt(S.key, new Uint8Array(await f.arrayBuffer()));
+        await putFile(`docs/${id}.enc`, text, null, "Añadir documento");
+      } catch (e) { handleErr(e); continue; }
+      await mutate((d) => { if (!d.docs.some((x) => x.id === id)) d.docs.push({ id, parcela, nombre: f.name, tipo: f.type || "application/octet-stream", tam: f.size, fecha: new Date().toISOString() }); }, "Documento subido");
+    }
+  }
+
+  async function openDoc(id, btn) {
+    const d = S.data.docs.find((x) => x.id === id); if (!d) return;
+    btn.disabled = true; btn.textContent = "Abriendo…";
+    try {
+      const bytes = await decrypt(S.key, await gh(`docs/${id}.enc`, { raw: true }));
+      const url = URL.createObjectURL(new Blob([bytes], { type: d.tipo }));
+      const a = document.createElement("a");
+      a.href = url; a.className = "btn"; a.textContent = "Abrir archivo"; a.target = "_blank"; a.rel = "noopener";
+      if (!/^(image\/|application\/pdf|text\/)/.test(d.tipo)) a.download = d.nombre;
+      btn.replaceWith(a); a.click();
+    } catch (e) { btn.disabled = false; btn.textContent = "Ver"; notice("No se pudo abrir el documento. Pulsa «Actualizar» y vuelve a intentarlo.", "error"); }
+  }
+
+  async function deleteDoc(id) {
+    try { const f = await gh(`docs/${id}.enc`); await delFile(`docs/${id}.enc`, f.sha, "Borrar documento"); }
+    catch (e) { if (e.status !== 404) { handleErr(e); return; } }
+    S.confirmDel = null;
+    await mutate((d) => { d.docs = d.docs.filter((x) => x.id !== id); }, "Documento borrado");
+  }
+
+  // ---------- eventos ----------
+  document.addEventListener("toggle", (ev) => {
+    const el = ev.target; if (!el.matches || !el.matches("details.extra")) return;
+    el.open ? S.open.add(el.dataset.p) : S.open.delete(el.dataset.p);
+  }, true);
+
+  document.addEventListener("change", (ev) => { if (ev.target.matches('input[type=file][data-parcela]')) uploadFiles(ev.target); });
+
+  document.addEventListener("click", async (ev) => {
+    const b = ev.target.closest("[data-act],[data-filter]"); if (!b || !S.data) return;
+    if (b.dataset.filter) {
+      S.filter = b.dataset.filter;
+      document.querySelectorAll("[data-filter]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      return render();
+    }
+    const act = b.dataset.act, id = b.dataset.id;
+    if (act === "copy") { try { await navigator.clipboard.writeText(b.dataset.tel); toast("Teléfono copiado"); } catch (e) { toast(fmtTel(b.dataset.tel)); } }
+    else if (act === "toggle") {
+      const s = S.data.abonados.find((x) => x.id === id); if (!s) return;
+      const v = !isPaid(s), y = S.year;
+      mutate((d) => { const t = d.abonados.find((x) => x.id === id); if (t) { t.pagos ||= {}; if (v) t.pagos[y] = true; else delete t.pagos[y]; } }, v ? "Marcado como pagado" : "Marcado como pendiente");
+    } else if (act === "all") {
+      const v = b.dataset.v === "1", p = b.dataset.p, y = S.year;
+      mutate((d) => d.abonados.filter((x) => x.parcela === p).forEach((t) => { t.pagos ||= {}; if (v) t.pagos[y] = true; else delete t.pagos[y]; }), v ? `Parcela ${p} al corriente` : `Parcela ${p} marcada pendiente`);
+    } else if (act === "nota") {
+      const p = b.dataset.p, txt = document.getElementById("nota-" + p).value.trim();
+      mutate((d) => { d.parcelas[p] ||= {}; d.parcelas[p].notas = txt; }, "Nota guardada");
+    } else if (act === "edit") { S.editing = id; S.confirmDel = null; render(); }
+    else if (act === "cancel") { S.editing = null; S.confirmDel = null; render(); }
+    else if (act === "del") { S.confirmDel = id; render(); }
+    else if (act === "del-yes") { S.editing = null; S.confirmDel = null; mutate((d) => { d.abonados = d.abonados.filter((x) => x.id !== id); }, "Abonado borrado"); }
+    else if (act === "doc-open") openDoc(id, b);
+    else if (act === "doc-del") { S.confirmDel = "doc:" + id; render(); }
+    else if (act === "doc-del-yes") deleteDoc(id);
+  });
+
+  document.addEventListener("submit", async (ev) => {
+    const f = ev.target;
+    if (f.id === "loginForm") return;
+    ev.preventDefault();
+    if (f.id === "addForm") {
+      const parcela = $("#addParcela").value.trim().toUpperCase().replace(/[\s-]/g, ""), nombre = $("#addNombre").value.trim(), telefono = $("#addTel").value.replace(/\D/g, "");
+      if (!parcela || !telefono) return;
+      const id = `p${parcela.replace(/[^A-Za-z0-9]/g, "")}-${uid()}`;
+      mutate((d) => {
+        if (d.abonados.some((x) => x.id === id)) return;
+        const orden = d.abonados.filter((s) => s.parcela === parcela).reduce((m, s) => Math.max(m, s.orden || 0), 0) + 1;
+        d.abonados.push({ id, parcela, orden, nombre, telefono, pagos: {} });
+      }, `Abonado añadido a la parcela ${parcela}`);
+      $("#addNombre").value = ""; $("#addTel").value = "";
+    } else if (f.classList.contains("edit")) {
+      const id = f.dataset.id, fd = new FormData(f);
+      const upd = { parcela: String(fd.get("parcela")).trim().toUpperCase().replace(/[\s-]/g, ""), nombre: String(fd.get("nombre")).trim(), telefono: String(fd.get("telefono")).replace(/\D/g, "") };
+      if (!upd.parcela || !upd.telefono) return;
+      S.editing = null;
+      mutate((d) => { const t = d.abonados.find((x) => x.id === id); if (t) Object.assign(t, upd); }, "Cambios guardados");
+    }
+  });
+
+  $("#year").addEventListener("change", (e) => { S.year = e.target.value; lsSet("cuotas.year", S.year); render(); });
+  $("#q").addEventListener("input", (e) => { S.q = e.target.value; render(); });
+  let cuotaT;
+  $("#cuota").addEventListener("input", (e) => {
+    const v = parseFloat(String(e.target.value).replace(",", ".")) || 0;
+    clearTimeout(cuotaT);
+    cuotaT = setTimeout(() => mutate((d) => { d.cuota = v; }), 800);
+  });
+  $("#reload").addEventListener("click", async () => {
+    setSync("Actualizando…");
+    try { await queue; await loadData(); notice(""); render(); setSync("Al día"); } catch (e) { handleErr(e); }
+  });
+  $("#logout").addEventListener("click", () => { lsSet("cuotas.k", null); lsSet("cuotas.t", null); location.reload(); });
+
+  // ---------- acceso ----------
+  async function fetchText(path) {
+    // API primero (sin caché de Pages); si falla, el archivo publicado.
+    try {
+      const r = await fetch(API + path + `?ref=${BRANCH}&t=${Date.now()}`, { headers: { Accept: "application/vnd.github.raw" }, cache: "no-store" });
+      if (r.ok) return r.text();
+      if (r.status === 404) return null;
+    } catch (e) {}
+    const r = await fetch(path + "?t=" + Date.now(), { cache: "no-store" });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error("No se pudo leer " + path);
+    return r.text();
+  }
+
+  async function start() {
+    $("#gate").hidden = true; $("#app").hidden = false;
+    try { await loadData(); render(); setSync("Al día"); }
+    catch (e) { handleErr(e); $("#parcels").innerHTML = `<div class="empty">No se pudieron cargar los datos. Pulsa «Actualizar».</div>`; }
+  }
+
+  async function boot() {
+    S.meta = JSON.parse(await fetchText("meta.json"));
+    const cfg = await fetchText("config.enc");
+    if (!cfg) $("#setupBox").hidden = false;
+    const k = lsGet("cuotas.k"), t = lsGet("cuotas.t");
+    if (k && t && cfg) {
+      try {
+        S.key = await crypto.subtle.importKey("raw", unb64(k), "AES-GCM", true, ["encrypt", "decrypt"]);
+        S.token = dec.decode(await decrypt(S.key, cfg));
+        return start();
+      } catch (e) { lsSet("cuotas.k", null); lsSet("cuotas.t", null); S.key = null; S.token = null; }
+    }
+    $("#pw").focus();
+  }
+
+  $("#loginForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const err = $("#loginErr"), btn = $("#loginBtn");
+    err.hidden = true; btn.disabled = true; btn.textContent = "Comprobando…";
+    try {
+      const key = await deriveKey($("#pw").value, S.meta);
+      const data = await fetchText("data.enc");
+      try { await decrypt(key, data); } catch (e) { throw new Error("Contraseña incorrecta."); }
+      let cfg = await fetchText("config.enc");
+      if (!cfg) {
+        const tok = $("#tok").value.trim();
+        if (!tok) throw new Error("Falta el token de GitHub para la configuración inicial.");
+        S.token = tok;
+        try { await gh("meta.json"); } catch (e) { S.token = null; throw new Error("El token no da acceso a este repositorio."); }
+        cfg = await encrypt(key, enc.encode(tok));
+        S.key = key;
+        try { await putFile("config.enc", cfg, null, "Configuración inicial"); }
+        catch (e) { S.token = null; throw new Error("El token no tiene permiso de escritura (Contents: Read and write)."); }
+      } else {
+        S.token = dec.decode(await decrypt(key, cfg));
+      }
+      S.key = key;
+      if ($("#remember").checked) { lsSet("cuotas.k", b64(new Uint8Array(await crypto.subtle.exportKey("raw", key)))); lsSet("cuotas.t", "1"); }
+      start();
+    } catch (e) {
+      err.textContent = e.message || "No se pudo entrar."; err.hidden = false;
+    } finally { btn.disabled = false; btn.textContent = "Entrar"; }
+  });
+
+  if (!window.crypto || !crypto.subtle) { $("#loginErr").textContent = "Este navegador no puede abrir la página. Usa Chrome, Safari o Firefox actualizados."; $("#loginErr").hidden = false; }
+  else boot().catch(() => { $("#loginErr").textContent = "No se pudo conectar. Revisa la conexión y recarga la página."; $("#loginErr").hidden = false; });
+})();
+</script>
+</body>
+</html>
